@@ -119,8 +119,8 @@ class SharedVisionModel:
         '''
         save the model
         '''
-        self._classification_model.save(save_path+'/'+self._model_name+'.h5')
-        print('Model saved to '+save_path)
+        self._classification_model.save(save_path+self._model_name+'.h5')
+        print('Model saved to '+save_path+self._model_name+'.h5')
         return
 
     def load_model(self, model_path):
