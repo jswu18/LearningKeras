@@ -11,7 +11,7 @@ class SharedVisionModel:
     Implementing a model that will train to classify whether two MNIST digits
     are the same or different
     '''
-    def __init__(self, model_name = 'sample_model'):
+    def __init__(self, model_name='sample_model'):
         self._model_name = model_name
         self.train = None
         self.test = None
@@ -24,33 +24,45 @@ class SharedVisionModel:
         '''
         Create dataset for pairs of images and whether the two digits match or not
         '''
-        def get_img_pairs_and_labels(imgs, labels):
+        def get_img_pairs_and_labels(imgs, labels, desired_size):
             '''
             creates image pairs with appropriate label vector
             '''
+            half_desired_size = int(desired_size/2)
             data = {}
             num_img = imgs.shape[0]
             #reshape to dim 4
             imgs = np.reshape(imgs, (-1, 28, 28, 1))
 
             #get num_img random digits between 0 and num_img-1
-            digit_a_idx = np.random.choice(num_img-1, num_img)
-            digit_b_idx = np.random.choice(num_img-1, num_img)
-            data['digit_a'] = np.take(imgs, digit_a_idx, axis=0)
-            data['digit_b'] = np.take(imgs, digit_b_idx, axis=0)
+            digit_a_idx = np.random.choice(num_img-1, desired_size*10)
+            digit_b_idx = np.random.choice(num_img-1, desired_size*10)
+            digit_a = np.take(imgs, digit_a_idx, axis=0)
+            digit_b = np.take(imgs, digit_b_idx, axis=0)
 
             #get labels as 0 when digits don't match, 1 otherwise
             labels_a = np.take(labels, digit_a_idx, axis=0)
             labels_b = np.take(labels, digit_b_idx, axis=0)
-            data['labels'] = (labels_a == labels_b).astype(int)
+            labels = (labels_a == labels_b).astype(int)
+
+            #need to make data even in terms of digits that match vs don't match
+            idx_false = np.nonzero(labels)[0]
+            mask_true = np.ones(len(labels))
+            mask_true[idx_false] = 0
+            idx_true = np.nonzero(mask_true)[0]
+            idx_false = idx_false[0:half_desired_size]
+            idx_true = idx_true[0:half_desired_size]
+            data['labels'] = np.concatenate((labels[idx_true], labels[idx_false]))
+            data['digit_a'] = np.concatenate((digit_a[idx_true], digit_a[idx_false]))
+            data['digit_b'] = np.concatenate((digit_b[idx_true], digit_b[idx_false]))
             return data
 
         #load MNIST data
         (x_train, y_train), (x_test, y_test) = mnist.load_data()
 
         #create pairs of images with label
-        self._train = get_img_pairs_and_labels(x_train, y_train)
-        self._test = get_img_pairs_and_labels(x_test, y_test)
+        self._train = get_img_pairs_and_labels(x_train, y_train, desired_size=x_train.shape[0])
+        self._test = get_img_pairs_and_labels(x_test, y_test, desired_size=x_test.shape[0])
         return
 
     def _define_model(self):
@@ -94,7 +106,7 @@ class SharedVisionModel:
                                        self._train['labels'], epochs=1)
         return
 
-    def save_model(self, save_path = ''):
+    def save_model(self, save_path=''):
         '''
         save the model
         '''
