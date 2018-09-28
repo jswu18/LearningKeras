@@ -11,7 +11,7 @@ class SharedVisionModel:
     Implementing a model that will train to classify whether two MNIST digits
     are the same or different
     '''
-    def __init__(self, model_name):
+    def __init__(self, model_name = 'sample_model'):
         self._model_name = model_name
         self.train = None
         self.test = None
@@ -50,7 +50,7 @@ class SharedVisionModel:
 
         #create pairs of images with label
         self._train = get_img_pairs_and_labels(x_train, y_train)
-        self._test = get_img_pairs_and_labels(x_train, y_train)
+        self._test = get_img_pairs_and_labels(x_test, y_test)
         return
 
     def _define_model(self):
@@ -94,7 +94,7 @@ class SharedVisionModel:
                                        self._train['labels'], epochs=1)
         return
 
-    def save_model(self, save_path):
+    def save_model(self, save_path = ''):
         '''
         save the model
         '''
@@ -110,8 +110,6 @@ class SharedVisionModel:
         return
 
 if __name__ == '__main__':
-    MODEL_NAME = 'sample_model'
-    SAVE_MODEL_PATH = ''
-    SharedVisionClassifier = SharedVisionModel(MODEL_NAME)
-    SharedVisionClassifier.train_model()
-    SharedVisionClassifier.save_model(SAVE_MODEL_PATH)
+    mnist_digit_compare = SharedVisionModel()
+    mnist_digit_compare.train_model()
+    mnist_digit_compare.save_model()
