@@ -76,6 +76,8 @@ class SharedVisionModel:
     def _define_model(self):
         '''
         define the model to be trained
+        Original code taken from:
+        https://keras.io/getting-started/functional-api-guide/
         '''
         # First, define the vision modules
         digit_input = Input(shape=(28, 28, 1))
@@ -130,8 +132,8 @@ class SharedVisionModel:
 
 if __name__ == '__main__':
     MODEL_NAME = 'sample_model'
-    DATA_PATH = '/Users/JamesWu/Downloads/mnist_all.mat'
-    SAVE_MODEL_PATH = '/Users/JamesWu/git/LearningKeras'
+    DATA_PATH = 'mnist_all.mat'
+    SAVE_MODEL_PATH = ''
     SharedVisionClassifier = SharedVisionModel(DATA_PATH, MODEL_NAME)
     SharedVisionClassifier.train_model()
     SharedVisionClassifier.save_model(SAVE_MODEL_PATH)
