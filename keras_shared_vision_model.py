@@ -3,6 +3,7 @@ import keras
 from keras.layers import Conv2D, MaxPooling2D, Input, Dense, Flatten
 from keras.models import Model
 from keras.utils import to_categorical
+from keras.datasets import mnist
 from scipy.io import loadmat
 
 class SharedVisionModel:
@@ -10,42 +11,16 @@ class SharedVisionModel:
     Implementing a model that will train to classify whether two MNIST digits
     are the same or different
     '''
-    def __init__(self, data_path, model_name):
+    def __init__(self, model_name):
         self._model_name = model_name
         self.train = None
         self.test = None
         self._classification_model = None
-        self._create_dataset(data_path)
+        self._create_dataset()
         self._define_model()
         return
 
-    @staticmethod
-    def load_data(data_path):
-        '''
-        load MNIST img and labels
-        '''
-        # Load the dataset
-        MNIST_data = loadmat(data_path)
-        d_imgs = {}
-        d_labels = {}
-        d_imgs['train'] = np.zeros((0, 784))
-        d_labels['train'] = np.zeros((0, 1))
-        d_imgs['test'] = np.zeros((0, 784))
-        d_labels['test'] = np.zeros((0, 1))
-
-        #loop through integers 0 to 9
-        for i in range(10):
-            num_train_img = MNIST_data['train'+str(i)].shape[0]
-            num_test_img = MNIST_data['test'+str(i)].shape[0]
-            d_imgs['train'] = np.concatenate((d_imgs['train'], MNIST_data['train'+str(i)]))
-            d_labels['train'] = np.concatenate((d_labels['train'], np.ones((num_train_img, 1))*i))
-            d_imgs['test'] = np.concatenate((d_imgs['test'], MNIST_data['test'+str(i)]))
-            d_labels['test'] = np.concatenate((d_labels['test'], np.ones((num_test_img, 1))*i))
-        d_imgs['train'] = np.reshape(d_imgs['train'], (-1, 28, 28, 1))
-        d_imgs['test'] = np.reshape(d_imgs['test'], (-1, 28, 28, 1))
-        return d_imgs, d_labels
-
-    def _create_dataset(self, data_path):
+    def _create_dataset(self):
         '''
         Create dataset for pairs of images and whether the two digits match or not
         '''
@@ -55,6 +30,9 @@ class SharedVisionModel:
             '''
             data = {}
             num_img = imgs.shape[0]
+            #reshape to dim 4
+            imgs = np.reshape(imgs, (-1, 28, 28, 1))
+
             #get num_img random digits between 0 and num_img-1
             digit_a_idx = np.random.choice(num_img-1, num_img)
             digit_b_idx = np.random.choice(num_img-1, num_img)
@@ -67,10 +45,12 @@ class SharedVisionModel:
             data['labels'] = (labels_a == labels_b).astype(int)
             return data
 
-        #first load MNIST data
-        d_imgs, d_labels = self.load_data(data_path)
-        self._train = get_img_pairs_and_labels(d_imgs['train'], d_labels['train'])
-        self._test = get_img_pairs_and_labels(d_imgs['test'], d_labels['test'])
+        #load MNIST data
+        (x_train, y_train), (x_test, y_test) = mnist.load_data()
+
+        #create pairs of images with label
+        self._train = get_img_pairs_and_labels(x_train, y_train)
+        self._test = get_img_pairs_and_labels(x_train, y_train)
         return
 
     def _define_model(self):
@@ -110,7 +90,6 @@ class SharedVisionModel:
         '''
         train the model
         '''
-        print(self._train['labels'].shape)
         self._classification_model.fit([self._train['digit_a'], self._train['digit_b']],
                                        self._train['labels'], epochs=1)
         return
@@ -132,8 +111,7 @@ class SharedVisionModel:
 
 if __name__ == '__main__':
     MODEL_NAME = 'sample_model'
-    DATA_PATH = 'mnist_all.mat'
     SAVE_MODEL_PATH = ''
-    SharedVisionClassifier = SharedVisionModel(DATA_PATH, MODEL_NAME)
+    SharedVisionClassifier = SharedVisionModel(MODEL_NAME)
     SharedVisionClassifier.train_model()
     SharedVisionClassifier.save_model(SAVE_MODEL_PATH)
