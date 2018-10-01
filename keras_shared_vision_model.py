@@ -2,27 +2,29 @@ import numpy as np
 import keras
 from keras.layers import Conv2D, MaxPooling2D, Input, Dense, Flatten
 from keras.models import Model
-from keras.utils import to_categorical
 from keras.datasets import mnist
-from scipy.io import loadmat
 
 class SharedVisionModel:
     '''
     Implementing a model that will train to classify whether two MNIST digits
     are the same or different
     '''
-    def __init__(self, model_name='sample_model'):
+    def __init__(self, model_name='sample_model', epochs=5, batch_size=32, train_size=60000, test_size=18000):
         self._model_name = model_name
-        self.train = None
-        self.test = None
+        self._epochs = epochs
+        self._batch_size = batch_size
+        self._train_size = train_size
+        self._test_size = test_size
+        self._train = None
+        self._test = None
         self._classification_model = None
-        self._create_dataset()
+        self._create_data_set()
         self._define_model()
         return
 
-    def _create_dataset(self):
+    def _create_data_set(self):
         '''
-        Create dataset for pairs of images and whether the two digits match or not
+        Create data set for pairs of images and whether the two digits match or not
         '''
         def get_img_pairs_and_labels(imgs, labels, desired_size):
             '''
@@ -61,8 +63,8 @@ class SharedVisionModel:
         (x_train, y_train), (x_test, y_test) = mnist.load_data()
 
         #create pairs of images with label
-        self._train = get_img_pairs_and_labels(x_train, y_train, desired_size=x_train.shape[0])
-        self._test = get_img_pairs_and_labels(x_test, y_test, desired_size=x_test.shape[0])
+        self._train = get_img_pairs_and_labels(x_train, y_train, desired_size=self._train_size)
+        self._test = get_img_pairs_and_labels(x_test, y_test, desired_size=self._test_size)
         return
 
     def _define_model(self):
@@ -93,8 +95,8 @@ class SharedVisionModel:
 
         self._classification_model = Model([digit_a, digit_b], out)
         self._classification_model.compile(optimizer='rmsprop',
-                                           loss='binary_crossentropy',
-                                           metrics=['accuracy']
+                                           loss='mean_squared_error',
+                                           metrics=['binary_accuracy']
                                           )
         return
 
@@ -103,7 +105,8 @@ class SharedVisionModel:
         train the model
         '''
         self._classification_model.fit([self._train['digit_a'], self._train['digit_b']],
-                                       self._train['labels'], epochs=1)
+                                       self._train['labels'], epochs=self._epochs, batch_size=self._batch_size,
+                                       validation_data=([self._test['digit_a'], self._test['digit_b']], self._test['labels']))
         return
 
     def save_model(self, save_path=''):
@@ -122,6 +125,6 @@ class SharedVisionModel:
         return
 
 if __name__ == '__main__':
-    mnist_digit_compare = SharedVisionModel()
-    mnist_digit_compare.train_model()
-    mnist_digit_compare.save_model()
+    MNISTDigitCompare = SharedVisionModel()
+    MNISTDigitCompare.train_model()
+    MNISTDigitCompare.save_model()
