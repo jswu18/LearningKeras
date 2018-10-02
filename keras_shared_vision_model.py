@@ -75,10 +75,9 @@ class SharedVisionModel:
         '''
         # First, define the vision modules
         digit_input = Input(shape=(28, 28, 1))
-        hidden_layer = Conv2D(64, (3, 3))(digit_input)
-        hidden_layer = Conv2D(64, (3, 3))(hidden_layer)
-        hidden_layer = MaxPooling2D((2, 2))(hidden_layer)
-        out = Flatten()(hidden_layer)
+        hidden_layer = Flatten()(digit_input)
+        hidden_layer = Dense(784, activation='relu')(hidden_layer)
+        out = Dense(10, activation='relu')(hidden_layer)
 
         vision_model = Model(digit_input, out)
 
@@ -117,6 +116,16 @@ class SharedVisionModel:
         print('Model saved to '+save_path+self._model_name+'.h5')
         return
 
+    def evaluate_model(self):
+        '''
+        Evaluate model using test set data
+        :return:
+        '''
+        score = self._classification_model.evaluate(self._test['images'], self._test['labels'])
+        print('Test loss: {}'.format(score[0]))
+        print('Test accuracy: {}'.format(score[1]))
+        return
+
     def load_model(self, model_path):
         '''
         load a model
@@ -127,4 +136,5 @@ class SharedVisionModel:
 if __name__ == '__main__':
     MNISTDigitCompare = SharedVisionModel()
     MNISTDigitCompare.train_model()
+    MNISTDigitCompare.evaluate_model()
     MNISTDigitCompare.save_model()
