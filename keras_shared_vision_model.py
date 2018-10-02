@@ -3,6 +3,7 @@ import keras
 from keras.layers import Conv2D, MaxPooling2D, Input, Dense, Flatten
 from keras.models import Model
 from keras.datasets import mnist
+import matplotlib.pyplot as plt
 
 class SharedVisionModel:
     '''
@@ -34,7 +35,7 @@ class SharedVisionModel:
             data = {}
             num_img = imgs.shape[0]
             #reshape to dim 4
-            imgs = np.reshape(imgs, (-1, 28, 28, 1))
+            imgs = np.reshape(imgs, (-1, 28, 28))
 
             #get num_img random digits between 0 and num_img-1
             digit_a_idx = np.random.choice(num_img-1, desired_size*10)
@@ -74,7 +75,7 @@ class SharedVisionModel:
         https://keras.io/getting-started/functional-api-guide/
         '''
         # First, define the vision modules
-        digit_input = Input(shape=(28, 28, 1))
+        digit_input = Input(shape=(28, 28))
         hidden_layer = Flatten()(digit_input)
         hidden_layer = Dense(784, activation='relu')(hidden_layer)
         out = Dense(10, activation='relu')(hidden_layer)
@@ -82,8 +83,8 @@ class SharedVisionModel:
         vision_model = Model(digit_input, out)
 
         # Then define the tell-digits-apart model
-        digit_a = Input(shape=(28, 28, 1))
-        digit_b = Input(shape=(28, 28, 1))
+        digit_a = Input(shape=(28, 28))
+        digit_b = Input(shape=(28, 28))
 
         # The vision model will be shared, weights and all
         out_a = vision_model(digit_a)
