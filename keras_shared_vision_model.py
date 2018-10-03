@@ -9,7 +9,7 @@ class SharedVisionModel:
     Implementing a model that will train to classify whether two MNIST digits
     are the same or different
     '''
-    def __init__(self, model_name='sample_model', epochs=5, batch_size=32, train_size=60000, test_size=18000):
+    def __init__(self, model_name='sample_model', epochs=10, batch_size=32, train_size=60000, test_size=18000):
         self._model_name = model_name
         self._epochs = epochs
         self._batch_size = batch_size
@@ -57,7 +57,12 @@ class SharedVisionModel:
             data['labels'] = np.concatenate((labels[idx_true], labels[idx_false]))
 
             #TODO create dataset of one hot encoded digits to train the visual model with the classification mdoel
+            # data['digit_a_labels'] = np.zeros((half_desired_size, 9))
+            # data['digit_b_labels'] = np.zeros((half_desired_size, 9))
+            # data['digit_a'][np.arange(9), labels_a] = 1
+            # data['digit_b'][np.arange(9), labels_b] = 1
             data['digit_a'] = np.concatenate((digit_a[idx_true], digit_a[idx_false]))
+
             data['digit_b'] = np.concatenate((digit_b[idx_true], digit_b[idx_false]))
             return data
 
@@ -95,7 +100,7 @@ class SharedVisionModel:
         out = Dense(1, activation='sigmoid')(concatenated)
 
         self._classification_model = Model([digit_a, digit_b], out)
-        self._classification_model.compile(optimizer='rmsprop',
+        self._classification_model.compile(optimizer='sgd',
                                            loss='mean_squared_error',
                                            metrics=['binary_accuracy']
                                           )

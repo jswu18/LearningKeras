@@ -1,6 +1,6 @@
 import numpy as np
 import keras
-from keras.layers import Conv2D, MaxPooling2D, Input, Dense, Flatten
+from keras.layers import Conv2D, MaxPooling2D, Input, Dense, Dropout, Flatten
 from keras.models import Model
 from keras.datasets import mnist
 from scipy.io import loadmat
@@ -10,7 +10,7 @@ class NumberRecognition:
     Implementing a model that will train to classify whether two MNIST digits
     are the same or different
     '''
-    def __init__(self, model_name='sample_number_recognition_model', epochs=5, batch_size=32):
+    def __init__(self, model_name='sample_number_recognition_model', epochs=12, batch_size=128):
         '''
 
         :param model_name: name of the model
@@ -52,19 +52,25 @@ class NumberRecognition:
         '''
         define the model to be trained
         Original code taken from:
-        https://keras.io/getting-started/functional-api-guide/
+        https://github.com/keras-team/keras/blob/master/examples/mnist_cnn.py
+        Transfered Sequential Model to a Transfer Model
         '''
+
         # First, define the vision modules
         digit_input = Input(shape=(28, 28, 1))
-        hidden_layer = Flatten()(digit_input)
-        hidden_layer = Dense(784, activation='relu')(hidden_layer)
-        out = Dense(10, activation='relu')(hidden_layer)
+        hidden_layer = Conv2D(32, (3, 3), activation='relu')(digit_input)
+        hidden_layer = Conv2D(64, (3, 3), activation='relu')(hidden_layer)
+        hidden_layer = MaxPooling2D((2, 2))(hidden_layer)
+        hidden_layer = Dropout(0.25)(hidden_layer)
+        hidden_layer = Flatten()(hidden_layer)
+        hidden_layer = Dense(128, activation='relu')(hidden_layer)
+        hidden_layer = Dropout(0.25)(hidden_layer)
+        out = Dense(10, activation='softmax')(hidden_layer)
 
         self._classification_model = Model(digit_input, out)
-        self._classification_model.compile(optimizer='rmsprop',
-                                           loss='mean_squared_error',
-                                           metrics=['binary_accuracy']
-                                          )
+        self._classification_model.compile( loss=keras.losses.categorical_crossentropy,
+                                            optimizer=keras.optimizers.Adadelta(),
+                                            metrics=['accuracy'])
         return
 
     def train_model(self):
