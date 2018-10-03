@@ -1,6 +1,6 @@
 import numpy as np
 import keras
-from keras.layers import Conv2D, MaxPooling2D, Input, Dense, Flatten
+from keras.layers import Conv2D, MaxPooling2D, Input, Dense, Flatten, Dropout
 from keras.models import Model
 from keras.datasets import mnist
 
@@ -34,7 +34,7 @@ class SharedVisionModel:
             data = {}
             num_img = imgs.shape[0]
             #reshape to dim 4
-            imgs = np.reshape(imgs, (-1, 28, 28))
+            imgs = np.reshape(imgs, (-1, 28, 28, 1))
 
             #get num_img random digits between 0 and num_img-1
             digit_a_idx = np.random.choice(num_img-1, desired_size*10)
@@ -57,10 +57,6 @@ class SharedVisionModel:
             data['labels'] = np.concatenate((labels[idx_true], labels[idx_false]))
 
             #TODO create dataset of one hot encoded digits to train the visual model with the classification mdoel
-            # data['digit_a_labels'] = np.zeros((half_desired_size, 9))
-            # data['digit_b_labels'] = np.zeros((half_desired_size, 9))
-            # data['digit_a'][np.arange(9), labels_a] = 1
-            # data['digit_b'][np.arange(9), labels_b] = 1
             data['digit_a'] = np.concatenate((digit_a[idx_true], digit_a[idx_false]))
 
             data['digit_b'] = np.concatenate((digit_b[idx_true], digit_b[idx_false]))
@@ -81,16 +77,21 @@ class SharedVisionModel:
         https://keras.io/getting-started/functional-api-guide/
         '''
         # First, define the vision modules
-        digit_input = Input(shape=(28, 28))
-        hidden_layer = Flatten()(digit_input)
-        hidden_layer = Dense(784, activation='relu')(hidden_layer)
-        out = Dense(10, activation='relu')(hidden_layer)
+        digit_input = Input(shape=(28, 28, 1))
+        hidden_layer = Conv2D(32, (3, 3), activation='relu')(digit_input)
+        hidden_layer = Conv2D(64, (3, 3), activation='relu')(hidden_layer)
+        hidden_layer = MaxPooling2D((2, 2))(hidden_layer)
+        hidden_layer = Dropout(0.25)(hidden_layer)
+        hidden_layer = Flatten()(hidden_layer)
+        hidden_layer = Dense(128, activation='relu')(hidden_layer)
+        hidden_layer = Dropout(0.25)(hidden_layer)
+        out = Dense(10, activation='softmax')(hidden_layer)
 
         vision_model = Model(digit_input, out)
 
         # Then define the tell-digits-apart model
-        digit_a = Input(shape=(28, 28))
-        digit_b = Input(shape=(28, 28))
+        digit_a = Input(shape=(28, 28, 1))
+        digit_b = Input(shape=(28, 28, 1))
 
         # The vision model will be shared, weights and all
         out_a = vision_model(digit_a)
