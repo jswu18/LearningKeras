@@ -54,12 +54,16 @@ class SharedVisionModel:
             idx_true = np.nonzero(mask_true)[0]
             idx_false = idx_false[0:half_desired_size]
             idx_true = idx_true[0:half_desired_size]
-            data['labels'] = np.concatenate((labels[idx_true], labels[idx_false]))
+            idx_images = np.concatenate((idx_true, idx_false))
+            data['labels'] = labels[idx_images]
+            data['digit_a'] = digit_a[idx_images]
+            data['digit_b'] = digit_b[idx_images]
 
-            #TODO create dataset of one hot encoded digits to train the visual model with the classification mdoel
-            data['digit_a'] = np.concatenate((digit_a[idx_true], digit_a[idx_false]))
-
-            data['digit_b'] = np.concatenate((digit_b[idx_true], digit_b[idx_false]))
+            #make labels that will be used as the secondary output by the vision model
+            data['digit_a_labels'] = np.zeros((half_desired_size*2, 10))
+            data['digit_b_labels'] = np.zeros((half_desired_size*2, 10))
+            data['digit_a_labels'][np.arange(half_desired_size*2), labels_a[idx_images]] = 1
+            data['digit_b_labels'][np.arange(half_desired_size*2), labels_b[idx_images]] = 1
             return data
 
         #load MNIST data
