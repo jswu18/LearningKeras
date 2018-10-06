@@ -9,7 +9,7 @@ class SharedVisionModel:
     Implementing a model that will train to classify whether two MNIST digits
     are the same or different
     '''
-    def __init__(self, model_name='sample_model', epochs=10, batch_size=32, train_size=60000, test_size=18000):
+    def __init__(self, model_name='sample_model', epochs=4, batch_size=32, train_size=60000, test_size=18000):
         self._model_name = model_name
         self._epochs = epochs
         self._batch_size = batch_size
@@ -101,23 +101,48 @@ class SharedVisionModel:
         out_a = vision_model(digit_a)
         out_b = vision_model(digit_b)
 
-        concatenated = keras.layers.concatenate([out_a, out_b])
-        out = Dense(1, activation='sigmoid')(concatenated)
+        out = keras.layers.Dot(axes=1)([out_a, out_b])
 
-        self._classification_model = Model([digit_a, digit_b], out)
-        self._classification_model.compile(optimizer='sgd',
-                                           loss='mean_squared_error',
-                                           metrics=['binary_accuracy']
+        self._classification_model = Model(inputs=[digit_a, digit_b], outputs=[out, out_a, out_b])
+        self._classification_model.compile( optimizer=keras.optimizers.Adadelta(),
+                                            loss='binary_crossentropy',
+                                            metrics=['accuracy'],
+                                            loss_weights = [0.1, 1, 1]
                                           )
         return
+
+    def test_single_train_input(self):
+        '''
+        debugging tool, prints out the layer outputs to make sure they are correct
+
+        :return: None
+        '''
+        print('#############################')
+        print('Reference')
+        print('Digit A Labels: {}'.format(self._test['digit_a_labels']))
+        print('Digit B Labels: {}'.format(self._test['digit_b_labels']))
+        print('Classification Label: {}'.format(self._test['labels']))
+        output = self._classification_model.predict([self._test['digit_a'], self._test['digit_b']])
+        print('#############################')
+        print('Predictions')
+        print('Digit A Labels: {}'.format(output[1]))
+        print('Digit B Labels: {}'.format(output[2]))
+        print('Classification Label: {}'.format(output[0]))
+        print('#############################')
+        return
+
 
     def train_model(self):
         '''
         train the model
         '''
         self._classification_model.fit([self._train['digit_a'], self._train['digit_b']],
-                                       self._train['labels'], epochs=self._epochs, batch_size=self._batch_size,
-                                       validation_data=([self._test['digit_a'], self._test['digit_b']], self._test['labels']))
+                                       [self._train['labels'], self._train['digit_a_labels'], self._train['digit_b_labels']],
+                                       epochs=self._epochs,
+                                       batch_size=self._batch_size,
+                                       validation_data=([self._test['digit_a'], self._test['digit_b']],
+                                                        [self._test['labels'], self._test['digit_a_labels'], self._test['digit_b_labels']]),
+                                       )
         return
 
     def save_model(self, save_path=''):
@@ -133,7 +158,9 @@ class SharedVisionModel:
         Evaluate model using test set data
         :return:
         '''
-        score = self._classification_model.evaluate(self._test['images'], self._test['labels'])
+
+        score = self._classification_model.evaluate([self._test['digit_a'], self._test['digit_b']],
+                                                    [self._test['labels'], self._test['digit_a_labels'], self._test['digit_b_labels']])
         print('Test loss: {}'.format(score[0]))
         print('Test accuracy: {}'.format(score[1]))
         return
