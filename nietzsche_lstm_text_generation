@@ -165,7 +165,7 @@ class TextGeneration:
             self.save_model(save_path='epoch_'+str(epoch)+'_')
         return
 
-    def generate_text(self, seed = None, num_char_to_generate = 400):
+    def generate_text(self, raw_seed = None, num_char_to_generate = 400):
         '''
         Generates text using the model given a seed
 
@@ -173,23 +173,28 @@ class TextGeneration:
         :param num_char_to_generate: the number of characters to generate after the seed
         :return: None
         '''
-        seed = seed.lower()
-        if seed is None:
-            seed = 'he who has a why to live can bear almost'
-        if len(seed) > 40:
-            seed = seed[len(seed)-40:]
-        if len(seed) < 40:
+        if raw_seed is None:
+            raw_seed = 'he who has a why to live can bear almost'
+            raw_seed = raw_seed.lower()
+        if len(raw_seed) > 40:
+            #need to make sure seed is exactly 40 characters long
+            seed = raw_seed[len(raw_seed)-40:]
+        elif len(raw_seed) < 40:
             print('Please input a seed of at least 40 characters')
             return
+        else:
+            #seed is exactly 40 characters long
+            seed = raw_seed
         for diversity in [0.2, 0.5, 1.0, 1.2]:
+            sentence = seed
             print('----- diversity:', diversity)
             generated = ''
-            generated += seed
-            print('----- Generating with seed: "' + seed + '"')
-            sys.stdout.write(generated)
+            generated += sentence
+            print('----- Generating with seed: "' + raw_seed + '"')
+            sys.stdout.write(raw_seed)
             for i in range(num_char_to_generate):
                 x_pred = np.zeros((1, self._sentence_char_len, self._num_chars))
-                for t, char in enumerate(seed):
+                for t, char in enumerate(sentence):
                     x_pred[0, t, self._char_indices_dict[char]] = 1.
 
                 preds = self._text_generation_model.predict(x_pred, verbose=0)[0]
@@ -197,7 +202,7 @@ class TextGeneration:
                 next_char = self._indices_char_dict[next_index]
 
                 generated += next_char
-                seed = seed[1:] + next_char
+                sentence = sentence[1:] + next_char
 
                 sys.stdout.write(next_char)
                 sys.stdout.flush()
