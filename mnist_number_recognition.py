@@ -3,7 +3,6 @@ import keras
 from keras.layers import Conv2D, MaxPooling2D, Input, Dense, Dropout, Flatten
 from keras.models import Model
 from keras.datasets import mnist
-from scipy.io import loadmat
 
 class NumberRecognition:
     '''
