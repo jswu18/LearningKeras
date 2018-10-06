@@ -1,0 +1,205 @@
+from __future__ import print_function
+
+import numpy as np
+import random
+import sys
+import io
+
+from collections import namedtuple
+from keras.callbacks import LambdaCallback
+from keras.layers import Dense, LSTM, Input
+from keras.models import Model
+from keras.optimizers import RMSprop
+from keras.utils.data_utils import get_file
+
+class TextGeneration:
+    '''
+    Using an LSTM for text generation
+    This code is taken from:
+        https://github.com/keras-team/keras/blob/master/examples/lstm_text_generation.py
+    I am reformatting it into a class structure as way to learn and understand text generation
+    I am also using the Keras Functional API instead of the Sequential API used in the example code
+    '''
+    def __init__(self, corpus_name='Nietzche', sentence_char_len = 40, step = 3):
+        '''
+
+        :param corpus_name: name of corpuse
+        :param sentence_char_len: length of each sentence in terms of characters
+        :param step: overlapping step size between training sentences
+        '''
+        self._sentence_char_len = sentence_char_len
+
+        self._text = None
+        self._num_chars = None
+        self._load_data(corpus_name)
+
+        self._indices_char_dict = None
+        self._char_indices_dict = None
+        self._generate_char_index()
+
+        self._sentences = None #training input
+        self._next_chars = None #training target
+        self._generate_training_data(step)
+
+        self._text_generation_model = None
+        self._define_model()
+        return
+
+    def _load_data(self, corpus_name):
+        '''
+        load corpus data
+
+        :param corpus_name: corpus name, for now only using Nietzche data
+        :return:
+        '''
+        CorpusEntry = namedtuple('Corpus', 'file_name website')
+
+        #dictionary of corpuses
+        dict_corpus = \
+            {
+            'Nietzche': CorpusEntry('nietzsche.txt', 'https://s3.amazonaws.com/text-datasets/nietzsche.txt')
+            }
+
+        #make sure corpus exists
+        if dict_corpus.get(corpus_name) is None:
+            raise ValueError('Invalid Corpus {}'.format(corpus_name))
+
+        #load corpus
+        path = get_file(dict_corpus[corpus_name].file_name, origin=dict_corpus[corpus_name].website)
+        with io.open(path, encoding='utf-8') as f:
+            text = f.read().lower()
+        self._text = text
+        return
+
+    def _generate_char_index(self):
+        '''
+        enumerate all the characters used in text to have an index
+        save characters and its corresponding index number to two dictionary
+            dict 1: key->index, value->character
+            dict 2: key->character, value->index
+        this will be used for character embeddings
+        :return:
+        '''
+        chars = sorted(list(set(self._text)))
+        self._num_chars = len(chars)
+        self._indices_char_dict = dict((i, c) for i, c in enumerate(chars))
+        self._char_indices_dict = dict((c, i) for i, c in enumerate(chars))
+        return
+
+    def _generate_training_data(self, step):
+        '''
+        split text to create training data
+        training input will be a "sentence"
+            a string of characters of length sentence_char_len in vectorized form
+        training output will be the next character in text after the "sentence"
+            also in vectorized form
+
+        :param step: overlapping step size between sentences
+        :return:
+        '''
+
+        def vectorize_chars(char_string):
+            '''
+            vectorize a list of characters
+            :param sentence:
+            :return:
+            '''
+            char_vectors = np.zeros((len(char_string), self._num_chars), dtype=np.bool)
+            #one hot incode
+            for i, char in enumerate(char_string):
+                char_vectors[i, self._char_indices_dict[char]] = 1
+            return char_vectors
+
+        text_char_len = len(self._text)
+        num_sentences = int(((text_char_len - self._sentence_char_len)/step)+1)
+
+        #initialize matricies
+        sentences = np.zeros((num_sentences, self._sentence_char_len, self._num_chars), dtype=np.bool)
+        next_chars = np.zeros((num_sentences, self._num_chars), dtype=np.bool)
+
+        #load text data from corpus into matrix form
+        for i in range(0, text_char_len - self._sentence_char_len, step):
+            sentence_string = self._text[i: i + self._sentence_char_len]
+            next_char_string = self._text[i + self._sentence_char_len]
+            sentences[int(i/step)] = vectorize_chars(sentence_string)
+            next_chars[int(i/step)] = vectorize_chars(next_char_string)
+        self._sentences = sentences
+        self._next_chars = next_chars
+        return
+
+    def _define_model(self):
+        '''
+        define text generation model using Functional keras
+
+        :return:
+        '''
+        text_input = Input(shape=(self._sentence_char_len, self._num_chars))
+        hidden_layer = LSTM(128)(text_input)
+        out = Dense(self._num_chars, activation='softmax')(hidden_layer)
+        self._text_generation_model = Model(text_input, out)
+        optimizer = RMSprop(lr=0.01)
+        self._text_generation_model.compile(loss='categorical_crossentropy', optimizer=optimizer)
+        return
+
+    def _on_epoch_end(self, epoch, _):
+        # Function invoked at end of each epoch. Prints generated text.
+        # This code was essentially copied over from the example code
+
+        def sample(preds, temperature=1.0):
+            # helper function to sample an index from a probability array
+            preds = np.asarray(preds).astype('float64')
+            preds = np.log(preds) / temperature
+            exp_preds = np.exp(preds)
+            preds = exp_preds / np.sum(exp_preds)
+            probas = np.random.multinomial(1, preds, 1)
+            return np.argmax(probas)
+
+        print()
+        print('----- Generating text after Epoch: %d' % epoch)
+
+        start_index = random.randint(0, len(self._text) - self._sentence_char_len - 1)
+        for diversity in [0.2, 0.5, 1.0, 1.2]:
+            print('----- diversity:', diversity)
+
+            generated = ''
+            sentence = self._text[start_index: start_index + self._sentence_char_len]
+            generated += sentence
+            print('----- Generating with seed: "' + sentence + '"')
+            sys.stdout.write(generated)
+
+            for i in range(400):
+                x_pred = np.zeros((1, self._sentence_char_len, self._num_chars))
+                for t, char in enumerate(sentence):
+                    x_pred[0, t, self._char_indices_dict[char]] = 1.
+
+                preds = self._text_generation_model.predict(x_pred, verbose=0)[0]
+                next_index = sample(preds, diversity)
+                next_char = self._indices_char_dict[next_index]
+
+                generated += next_char
+                sentence = sentence[1:] + next_char
+
+                sys.stdout.write(next_char)
+                sys.stdout.flush()
+            print()
+        return
+
+    def train_model(self, print_callback_flag = True):
+        '''
+        train the model
+
+        :return:
+        '''
+        print_callback = LambdaCallback(on_epoch_end=self._on_epoch_end)
+        self._text_generation_model.fit(
+                                        self._sentences,
+                                        self._next_chars,
+                                        batch_size=128,
+                                        epochs=60,
+                                        callbacks=[print_callback] if print_callback_flag else None
+                                        )
+        return
+
+if __name__ == '__main__':
+    NietzcheTextGeneration = TextGeneration()
+    NietzcheTextGeneration.train_model()
