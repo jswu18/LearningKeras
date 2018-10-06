@@ -4,6 +4,7 @@ import numpy as np
 import random
 import sys
 import io
+import keras
 
 from collections import namedtuple
 from keras.callbacks import LambdaCallback
@@ -27,6 +28,7 @@ class TextGeneration:
         :param sentence_char_len: length of each sentence in terms of characters
         :param step: overlapping step size between training sentences
         '''
+        self._model_name = corpus_name
         self._sentence_char_len = sentence_char_len
 
         self._text = None
@@ -141,48 +143,67 @@ class TextGeneration:
         self._text_generation_model.compile(loss='categorical_crossentropy', optimizer=optimizer)
         return
 
+    def _sample(self, preds, temperature=1.0):
+        # helper function to sample an index from a probability array
+        preds = np.asarray(preds).astype('float64')
+        preds = np.log(preds) / temperature
+        exp_preds = np.exp(preds)
+        preds = exp_preds / np.sum(exp_preds)
+        probas = np.random.multinomial(1, preds, 1)
+        return np.argmax(probas)
+
     def _on_epoch_end(self, epoch, _):
         # Function invoked at end of each epoch. Prints generated text.
         # This code was essentially copied over from the example code
-
-        def sample(preds, temperature=1.0):
-            # helper function to sample an index from a probability array
-            preds = np.asarray(preds).astype('float64')
-            preds = np.log(preds) / temperature
-            exp_preds = np.exp(preds)
-            preds = exp_preds / np.sum(exp_preds)
-            probas = np.random.multinomial(1, preds, 1)
-            return np.argmax(probas)
-
         print()
         print('----- Generating text after Epoch: %d' % epoch)
 
         start_index = random.randint(0, len(self._text) - self._sentence_char_len - 1)
+        sentence = self._text[start_index: start_index + self._sentence_char_len]
+        self.generate_text(seed=sentence)
+        if epoch%5==0:
+            self.save_model(save_path='epoch_'+str(epoch)+'_')
+        return
+
+    def generate_text(self, seed = None, num_char_to_generate = 400):
+        '''
+        Generates text using the model given a seed
+
+        :param seed: a string that must be equal to or longer than 40 characters
+        :param num_char_to_generate: the number of characters to generate after the seed
+        :return: None
+        '''
+        seed = seed.lower()
+        if seed is None:
+            seed = 'he who has a why to live can bear almost'
+        if len(seed) > 40:
+            seed = seed[len(seed)-40:]
+        if len(seed) < 40:
+            print('Please input a seed of at least 40 characters')
+            return
         for diversity in [0.2, 0.5, 1.0, 1.2]:
             print('----- diversity:', diversity)
-
             generated = ''
-            sentence = self._text[start_index: start_index + self._sentence_char_len]
-            generated += sentence
-            print('----- Generating with seed: "' + sentence + '"')
+            generated += seed
+            print('----- Generating with seed: "' + seed + '"')
             sys.stdout.write(generated)
-
-            for i in range(400):
+            for i in range(num_char_to_generate):
                 x_pred = np.zeros((1, self._sentence_char_len, self._num_chars))
-                for t, char in enumerate(sentence):
+                for t, char in enumerate(seed):
                     x_pred[0, t, self._char_indices_dict[char]] = 1.
 
                 preds = self._text_generation_model.predict(x_pred, verbose=0)[0]
-                next_index = sample(preds, diversity)
+                next_index = self._sample(preds, diversity)
                 next_char = self._indices_char_dict[next_index]
 
                 generated += next_char
-                sentence = sentence[1:] + next_char
+                seed = seed[1:] + next_char
 
                 sys.stdout.write(next_char)
                 sys.stdout.flush()
             print()
         return
+
 
     def train_model(self, print_callback_flag = True):
         '''
@@ -200,6 +221,30 @@ class TextGeneration:
                                         )
         return
 
+    def save_model(self, save_path=''):
+        '''
+        save the model
+
+        :param save_path: path to save the model at
+        :return:
+        '''
+        self._text_generation_model.save(save_path+self._model_name+'.h5')
+        print('Model saved to '+save_path+self._model_name+'.h5')
+        return
+
+    def load_model(self, model_path):
+        '''
+        loads a model
+
+        :param model_path: path to the model
+        :return:
+        '''
+        self._text_generation_model = keras.models.load_model(model_path)
+        return
+
 if __name__ == '__main__':
     NietzcheTextGeneration = TextGeneration()
     NietzcheTextGeneration.train_model()
+    NietzcheTextGeneration.save_model()
+    NietzcheTextGeneration.load_model('Nietzche.h5')
+    NietzcheTextGeneration.generate_text()
