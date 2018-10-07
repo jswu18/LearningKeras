@@ -290,7 +290,7 @@ class TextGeneration:
 
 if __name__ == '__main__':
     NietzcheTextGeneration = TextGeneration()
-    # NietzcheTextGeneration.train_model()
-    # NietzcheTextGeneration.save_model()
-    NietzcheTextGeneration.load_model('epoch_30_Nietzche.h5')
+    NietzcheTextGeneration.train_model()
+    NietzcheTextGeneration.save_model()
+    NietzcheTextGeneration.load_model('Nietzche.h5')
     NietzcheTextGeneration.prompt()
