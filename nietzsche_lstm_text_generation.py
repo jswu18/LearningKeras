@@ -196,7 +196,6 @@ class TextGeneration:
                 x_pred = np.zeros((1, self._sentence_char_len, self._num_chars))
                 for t, char in enumerate(sentence):
                     x_pred[0, t, self._char_indices_dict[char]] = 1.
-
                 preds = self._text_generation_model.predict(x_pred, verbose=0)[0]
                 next_index = self._sample(preds, diversity)
                 next_char = self._indices_char_dict[next_index]
@@ -263,11 +262,17 @@ class TextGeneration:
         while True:
             while raw_seed is None:
                 raw_seed = input(input_text_message)
+                if raw_seed == 'exit':
+                    print('Exiting...')
+                    return
                 if len(raw_seed)<40:
                     print('Please input a seed of at least 40 characters')
                     raw_seed = None
             while num_char_to_generate is None:
                 num_char_to_generate = input(input_number_of_characters)
+                if num_char_to_generate == 'exit':
+                    print('Exiting...')
+                    return
                 try:
                     num_char_to_generate = int(num_char_to_generate)
                 except ValueError:
@@ -282,11 +287,10 @@ class TextGeneration:
                     self.generate_text(raw_seed, num_char_to_generate)
             raw_seed = None
             num_char_to_generate = None
-        return
 
 if __name__ == '__main__':
     NietzcheTextGeneration = TextGeneration()
-    NietzcheTextGeneration.train_model()
-    NietzcheTextGeneration.save_model()
-    NietzcheTextGeneration.load_model('Nietzche.h5')
+    # NietzcheTextGeneration.train_model()
+    # NietzcheTextGeneration.save_model()
+    NietzcheTextGeneration.load_model('epoch_30_Nietzche.h5')
     NietzcheTextGeneration.prompt()
