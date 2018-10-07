@@ -175,7 +175,7 @@ class TextGeneration:
         '''
         if raw_seed is None:
             raw_seed = 'he who has a why to live can bear almost'
-            raw_seed = raw_seed.lower()
+        raw_seed = raw_seed.lower()
         if len(raw_seed) > 40:
             #need to make sure seed is exactly 40 characters long
             seed = raw_seed[len(raw_seed)-40:]
