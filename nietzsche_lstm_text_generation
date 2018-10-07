@@ -247,9 +247,46 @@ class TextGeneration:
         self._text_generation_model = keras.models.load_model(model_path)
         return
 
+    def prompt(self):
+        '''
+        Prompt for input given a message and return that value after verifying the input.
+
+        Code base from
+            https://stackoverflow.com/questions/3345202/getting-user-input
+
+        :return:
+        '''
+        input_text_message = 'Please input seed: '
+        input_number_of_characters = 'Please indicate the number of characters you wish to generate: '
+        raw_seed = None
+        num_char_to_generate = None
+        while True:
+            while raw_seed is None:
+                raw_seed = input(input_text_message)
+                if len(raw_seed)<40:
+                    print('Please input a seed of at least 40 characters')
+                    raw_seed = None
+            while num_char_to_generate is None:
+                num_char_to_generate = input(input_number_of_characters)
+                try:
+                    num_char_to_generate = int(num_char_to_generate)
+                except ValueError:
+                    print('Please enter an integer')
+                    num_char_to_generate = None
+                    continue
+                if num_char_to_generate < 0:
+                    print('Please enter an positive integer')
+                    num_char_to_generate = None
+                else:
+                    print('Generating text...')
+                    self.generate_text(raw_seed, num_char_to_generate)
+            raw_seed = None
+            num_char_to_generate = None
+        return
+
 if __name__ == '__main__':
     NietzcheTextGeneration = TextGeneration()
     NietzcheTextGeneration.train_model()
     NietzcheTextGeneration.save_model()
     NietzcheTextGeneration.load_model('Nietzche.h5')
-    NietzcheTextGeneration.generate_text()
+    NietzcheTextGeneration.prompt()
